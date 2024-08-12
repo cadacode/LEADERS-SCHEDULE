@@ -1,0 +1,79 @@
+import pandas as pd
+import numpy as np
+import os
+import openpyxl
+from copy import copy
+from openpyxl.styles import Font, Border, PatternFill, Alignment, Protection
+
+def copy_style(source_cell, target_cell):
+    if source_cell.has_style:
+        target_cell.font = Font(
+            name=source_cell.font.name, 
+            size=source_cell.font.size,
+            bold=source_cell.font.bold, 
+            italic=source_cell.font.italic,
+            vertAlign=source_cell.font.vertAlign, 
+            underline=source_cell.font.underline, 
+            strike=source_cell.font.strike,
+            color=source_cell.font.color
+        )
+        target_cell.fill = PatternFill(
+            fill_type=source_cell.fill.fill_type,
+            start_color=source_cell.fill.start_color,
+            end_color=source_cell.fill.end_color
+        )
+        target_cell.border = Border(
+            left=source_cell.border.left,
+            right=source_cell.border.right,
+            top=source_cell.border.top,
+            bottom=source_cell.border.bottom
+        )
+        target_cell.alignment = Alignment(
+            horizontal=source_cell.alignment.horizontal, 
+            vertical=source_cell.alignment.vertical,
+            text_rotation=source_cell.alignment.text_rotation,
+            wrap_text=source_cell.alignment.wrap_text,
+            shrink_to_fit=source_cell.alignment.shrink_to_fit,
+            indent=source_cell.alignment.indent
+        )
+        target_cell.number_format = source_cell.number_format
+        target_cell.protection = Protection(
+            locked=source_cell.protection.locked,
+            hidden=source_cell.protection.hidden
+        )
+
+def extract_and_combine_sheets_with_format(folder_path, sheet_name, output_folder):
+    output_wb = openpyxl.Workbook()
+    output_wb.remove(output_wb.active)  # Remove the default sheet
+
+    excel_files = [f for f in os.listdir(folder_path) if f.endswith(('.xlsx', '.xls'))]
+
+    for excel_file in excel_files:
+        file_path = os.path.join(folder_path, excel_file)
+        wb = openpyxl.load_workbook(file_path, data_only=True)
+        
+        if sheet_name in wb.sheetnames:
+            sheet = wb[sheet_name]
+            output_sheetname = os.path.splitext(excel_file)[0][:31]  # Truncate to 31 characters for Excel's limit
+            output_sheet = output_wb.create_sheet(title=output_sheetname)
+
+            for row in sheet:
+                output_sheet.append([cell.value for cell in row])  # Copy data
+                for cell in row:  # Copy style
+                    new_cell = output_sheet.cell(row=cell.row, column=cell.column)
+                    copy_style(cell, new_cell)
+
+            print(f"Sheet {sheet_name} from {excel_file} copied successfully!")
+
+        else:
+            print(f"Sheet {sheet_name} not found in {excel_file}. Skipping...")
+
+    output_file_path = os.path.join(output_folder, 'February_Store_Schedule.xlsx')
+    output_wb.save(output_file_path)
+    print(f"Data combined successfully! Result saved in {output_file_path}")
+
+# Example usage
+folder_path = "R:\\CORP. SHARED\\STORE SCHEDULES\\2024 SCHEDULES_ALL STORES\\West Coast & Mexico"
+output_folder = "C:\\Users\\cadae\\OneDrive - Valentino S.p.A\\#RetailWestMexico\\REGION"
+sheet_name = "MAY"
+extract_and_combine_sheets_with_format(folder_path, sheet_name, output_folder)
